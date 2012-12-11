@@ -1,0 +1,64 @@
+如果我们想往数据库表中插入一行记录，可以使用以下SQL语句：
+
+INSERT INTO tbl_name (col1,col2) VALUES (15,16);
+
+那如果我们想插入多行记录呢？可能你会想到多次运行INSERT语句即可，就像下面的php代码示例：
+<?php
+	$a = 1;
+	$b = 1;
+	while (5 != $a)
+	{
+		$sql = "INSERT INTO tbl_name (col1,col2) VALUES ($a,$b)";
+		mysql_query($sql);
+		$a++;
+		$b++;
+	}
+?>
+哦，切糕，这样写代码效率是很低的，弄不好会严重占用计算机资源，如果是while (5000 == $a)，
+那就要执行5000次数据库查询，哇塞！好家伙！如果你使用php搭建网站，并且使用的是共享虚拟主机，
+你给来这么一手，估计你的网站很快就会挂掉了。这可够受罪的咯，那怎样写才能提高效率呢？
+不知道你有没有使用过MySQL的可视化管理工具phpMyAdmin或者其他的数据库管理软件，
+备份数据库的时候会生成一个.sql文件，里面就是一大堆sql语句，
+仔细研究一下，它使用的INSERT语句是这样的：
+
+INSERT INTO `userTable` (`user_id`, `user_name`) VALUES (1, 'dsf'),(2, 'fgy');
+
+这样只需执行一次SQL查询，即可插入多行记录，大大提高了效率，使用php编程的时候，
+可以使用字符串连接的方式连接sql语句即可:
+<?php
+$a = 1;
+while (5 != $a)
+{
+    if (1 == $a)
+        $sql = "INSERT INTO tbl_name (col1,col2) VALUES ($a,$b)";
+    else
+        $sql .= ",($a,$b)";
+
+    $a++;
+    $b++;
+}
+mysql_query($sql);
+?>
+===============================
+下面是在lithium 框架中遇到的情况，如果按往常做法需要不断切表，循环插入，
+现在改进的方法是构造sql语句，一次切表，一次性插入，哦耶！切个糕！
+/**
+ * Changes the responsible of the task.
+ *
+ * @param integer $id Offer task ID
+ * @param array $rids Offer responsible user ID
+ */
+public function updateResponsible($id, $rids) {
+	foreach ($rids as $value) {
+		//$values .='('.$id.','.$value.'),';
+		$values .= sprintf("(%d,%d),", $id, $value);
+	}
+	$values = rtrim($values,',');
+	$tableName = 'task_responsible';
+	$sql = sprintf("INSERT INTO `%s`(task_id,user_id) VALUES %s", $tableName, $values);
+	$success = $this->table($tableName)->sql($sql);
+	if ($success) {
+		return true;
+	}
+	return false;
+}
